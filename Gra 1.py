@@ -29,6 +29,7 @@ class Gracz:
         self.pos_x = SZEROKOSC/4
         self.pos_y = WYSOKOSC/10*7
         self.sprite = Gracz.sprite_right
+        self.kierunek = "right"
         self.hp = hp
     
     def draw(self, screen:pygame.Surface):
@@ -40,8 +41,9 @@ class Gracz:
             self.pos_x = SZEROKOSC-SZEROKOSC_GRACZA
         else:
             self.pos_x += 5
-    
+        self.kierunek = "right"
     def move_left(self):
+        self.kierunek = "left"
         self.sprite = Gracz.sprite_left
         if self.pos_x < 0:
             self.pos_x = 0 
@@ -73,17 +75,21 @@ class Pocisk:
         screen.blit(Pocisk.sprite, (self.pos_x, self.pos_y))
 
 class Bazooka:
-    sprite = wyrzutnia
+    sprite_left = wyrzutnia
+    sprite_right=pygame.transform.flip(sprite_left, True, False)
     rotation_offset = pygame.math.Vector2(50, 70)
     
     def __init__(self):
-        self.sprite = Bazooka.sprite
+        self.sprite = Bazooka.sprite_right
         self.rotation_offset = Bazooka.rotation_offset
     
-    def aktualizacja_współrzędnych(self, x, y):
+    def aktualizacja_współrzędnych(self, x, y, kierunek_gracza):
         self.pos_x = x
         self.pos_y = y
-    
+        if kierunek_gracza=="left":
+            self.sprite=Bazooka.sprite_left
+        else:
+            self.sprite=Bazooka.sprite_right
     def oś_obrotu(self, offset:list, screen:pygame.Surface):
         x = self.pos_x + offset[0]
         y = self.pos_y + offset[1]
@@ -91,12 +97,20 @@ class Bazooka:
         pygame.draw.circle(screen, "red", center, 4)
     
     def draw(self, screen:pygame.Surface):
-        screen.blit(self.sprite, (self.pos_x, self.pos_y))
+        pos_x = self.pos_x
+        pos_y = self.pos_y
+        
+        screen.blit(self.sprite, (pos_x - self.sprite.get_width()//2, pos_y - self.sprite.get_height()//2 ))
         self.oś_obrotu([50, 70], screen)
     
-    def rotate (self, kat):
-        self.sprite = pygame.transform.rotate(Bazooka.sprite, kat)
-        self.rotation_offset = self.rotation_offset.rotate(kat)
+    def rotate (self, pozycja_myszki):
+        odleglosc = pygame.math.Vector2(pozycja_myszki)-(self.pos_x,self.pos_y)
+        wektor_osi_x = pygame.math.Vector2(1, 0)
+        kat = odleglosc.angle_to(wektor_osi_x) - 42
+        if self.sprite == Bazooka.sprite_left:
+            kat=kat-90
+        self.sprite = pygame.transform.rotate(self.sprite, kat)
+        self.rotation_offset = Bazooka.rotation_offset.rotate(kat)
 
 
 pos_ziemia = WYSOKOSC/10*7
@@ -126,7 +140,7 @@ while run_game:
                 click_x = click_pos[0]
                 click_y = click_pos[1]
                 pocisk = Pocisk(click_x, click_y, 10)
-    
+        
     keyboard = pygame.key.get_pressed()
     if keyboard[pygame.K_RIGHT] or keyboard[pygame.K_d]:
         gracz.move_right()
@@ -139,8 +153,10 @@ while run_game:
     else:
         gracz.spadanie()
     
-    bazoka.aktualizacja_współrzędnych(gracz.pos_x, gracz.pos_y+30)
-    bazoka.rotate(60)
+    bazoka.aktualizacja_współrzędnych(gracz.pos_x, gracz.pos_y+30, gracz.kierunek)
+    
+    pozycja_myszki = pygame.mouse.get_pos()  # (x, y)
+    bazoka.rotate(pozycja_myszki)
     
     gracz.draw(screen)
     bazoka.draw(screen)
